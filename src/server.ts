@@ -1,49 +1,37 @@
 import http, { IncomingMessage, Server, ServerResponse } from "http";
-import ENV from "./config/env";
+import ENV from "./config";
+import { RouteHandler, routes } from "./helpers/RouteHandler";
+import sendJson from "./helpers/sendJson";
+import "./routes";
+import findDynamicRoute from "./helpers/dynamicRouteHandler";
 
 const server: Server = http.createServer(
   (req: IncomingMessage, res: ServerResponse) => {
-    if (req.url === "/" && req.method === "GET") {
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(
-        JSON.stringify({
-          message: "Hello from node js with typescript",
-          path: req.url,
-        })
-      );
+    console.log("Server is running...");
+
+    const method = req.method?.toUpperCase() || "";
+    const path = req.url || "";
+    const methodMap = routes.get(method);
+    const handler: RouteHandler | undefined = methodMap?.get(path);
+
+    if (handler) {
+      handler(req, res);
+    } else if (findDynamicRoute(method, path)) {
+      const match = findDynamicRoute(method, path);
+      (req as any).params = match?.params;
+      match?.handler(req, res);
+    } else {
+      sendJson(res, 404, {
+        success: false,
+        message: "Route not found!",
+        path,
+      });
     }
-
-    if (req.url === "/api" && req.method === "GET") {
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(
-        JSON.stringify({
-          message: "Health status ok!",
-          path: req.url,
-        })
-      );
-    }
-
-    if(req.url === "/api/users" && req.method === "POST") {
-        let body = "";
-
-        req.on("data",(chunk) => {
-            body += chunk.toString();
-        })
-
-        req.on("end",() => {
-            try {
-                const parseBody = JSON.parse(body);
-                res.end(JSON.stringify(parseBody))
-            } catch (error: any) {
-                console.log(error?.message)
-            }
-        })
-    }
-
-
   }
 );
 
-server.listen(ENV.PORT, () => {
-  console.log(`Server is rinngin port ${ENV.PORT}`);
+const PORT = ENV.PORT ?? 8080;
+
+server.listen(PORT, () => {
+  console.log(`Server is running port: ${PORT}`);
 });
