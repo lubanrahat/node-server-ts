@@ -12,6 +12,35 @@ const server: Server = http.createServer(
         })
       );
     }
+
+    if (req.url === "/api" && req.method === "GET") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(
+        JSON.stringify({
+          message: "Health status ok!",
+          path: req.url,
+        })
+      );
+    }
+
+    if(req.url === "/api/users" && req.method === "POST") {
+        let body = "";
+
+        req.on("data",(chunk) => {
+            body += chunk.toString();
+        })
+
+        req.on("end",() => {
+            try {
+                const parseBody = JSON.parse(body);
+                res.end(JSON.stringify(parseBody))
+            } catch (error: any) {
+                console.log(error?.message)
+            }
+        })
+    }
+
+
   }
 );
 
